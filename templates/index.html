@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ECG Smart Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0d0d17;
+      color: #e0e0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    .dashboard {
+      background-color: #1a1a2e;
+      border-radius: 20px;
+      box-shadow: 0 12px 32px rgba(100, 100, 255, 0.2);
+      width: 100%;
+      max-width: 1200px;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #a3e4ff;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 40px;
+    }
+
+    .upload-section {
+      background-color: #252545;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 6px 18px rgba(160, 160, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .upload-section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #c1cfff;
+    }
+
+    input[type="file"] {
+      display: block;
+      margin: 20px 0;
+      font-size: 1rem;
+      color: #fff;
+    }
+
+    .generate-button {
+      background: linear-gradient(135deg, #00f0ff, #9d7bff);
+      color: #000;
+      padding: 16px 32px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 300px;
+      transition: 0.3s ease;
+    }
+
+    .generate-button:hover {
+      transform: scale(1.05);
+    }
+
+    .report-section {
+      background-color: #252545;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 6px 18px rgba(160, 160, 255, 0.1);
+    }
+
+    .report-section h2 {
+      margin-bottom: 10px;
+      color: #f4f4ff;
+    }
+
+    .report-section p {
+      margin: 10px 0;
+    }
+
+    .highlight {
+      color: #00f0ff;
+      font-weight: bold;
+    }
+
+    ul {
+      padding-left: 20px;
+      margin-top: 10px;
+    }
+
+    .footer {
+      font-size: 0.85rem;
+      color: #999;
+      margin-top: 10px;
+    }
+
+    .tags {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .tag {
+      background-color: #44446a;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .visualization {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .ecg-signal {
+      width: 100%;
+      max-width: 1200px;
+      height: 200px;
+      margin-top: 40px;
+      background: #13131f;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #9d7bff;
+      position: relative;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .scale {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 12px;
+      color: #00f0ff;
+      background: rgba(0, 240, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <h1>ECG Dashboard</h1>
+    <div class="grid">
+      <div class="upload-section">
+        <h2>Upload ECG File</h2>
+        <input type="file" id="fileInput">
+        <button class="generate-button" onclick="upload()">Generate Report</button>
+      </div>
+
+      <div id="report" class="report-section" style="display:none;">
+        <h2>Diagnostic Report</h2>
+        <p><strong>Report ID:</strong> <span id="reportId"></span></p>
+        <p><strong>Diagnosis:</strong> <span id="diagnosis" class="highlight"></span></p>
+        <p><strong>Interpretation:</strong> <span id="interpretation"></span></p>
+        <p><strong>Recommended Action:</strong> <span id="recommendation"></span></p>
+        <div id="conditionInsights"></div>
+        <div class="footer">Generated on <span id="timestamp"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ecg-signal">
+    <canvas id="ecgCanvas"></canvas>
+    <div class="scale">Scale: 1 box = 0.04s / 1mV</div>
+  </div>
+
+  <script>
+    async function upload() {
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) return alert("Please upload a CSV file");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/predict", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      document.getElementById("reportId").textContent = data.report_id;
+      document.getElementById("diagnosis").textContent = data.label;
+      document.getElementById("timestamp").textContent = data.timestamp;
+
+      const interpretations = {
+        0: {
+          interp: "Your ECG shows normal sinus rhythm.",
+          reco: "Continue a healthy lifestyle.",
+          details: `
+            <h3>✅ Normal Beat (N)</h3>
+            <ul>
+              <li>Stable heart rate and rhythm</li>
+              <li>No chest discomfort</li>
+              <li>Normal blood pressure and oxygen levels</li>
+              <li>Absence of dizziness or fatigue</li>
+            </ul>
+          `
+        },
+        1: {
+          interp: "Premature atrial contractions detected.",
+          reco: "Avoid caffeine/stress. Monitor if frequent.",
+          details: `
+            <h3>⚠️ Atrial Premature Beat (A)</h3>
+            <ul>
+              <li>Occasional palpitations or skipped beats</li>
+              <li>Mild chest flutter or pressure</li>
+              <li>Brief episodes of light-headedness</li>
+              <li>Irregular pulse patterns</li>
+            </ul>
+          `
+        },
+        2: {
+          interp: "Ventricular ectopic beats identified.",
+          reco: "Schedule a follow-up with your doctor.",
+          details: `
+            <h3>⚠️ Ventricular Premature Beat (V)</h3>
+            <ul>
+              <li>A sudden "thump" or skipped heartbeat sensation</li>
+              <li>Feeling tired after episodes</li>
+              <li>Mild dizziness or fainting</li>
+              <li>Anxiety due to irregular rhythm</li>
+            </ul>
+          `
+        },
+        3: {
+          interp: "Signs of myocardial infarction found!",
+          reco: "Seek emergency medical help immediately.",
+          details: `
+            <h3>🚨 Myocardial Infarction (MI)</h3>
+            <ul>
+              <li>Intense chest pain or pressure, radiating to the arm or jaw</li>
+              <li>Difficulty breathing</li>
+              <li>Sweating or cold, clammy skin</li>
+              <li>Nausea, vomiting, or extreme fatigue</li>
+            </ul>
+          `
+        },
+        4: {
+          interp: "Unusual or mixed rhythm patterns were identified.",
+          reco: "Further analysis is recommended.",
+          details: `
+            <h3>⚠️ Other Arrhythmias / Fusion Beats / Unknown</h3>
+            <ul>
+              <li>Irregular or inconsistent heartbeat</li>
+              <li>General fatigue or weakness</li>
+              <li>Momentary vision disturbances or fainting</li>
+              <li>Anxiety during abnormal rhythm episodes</li>
+            </ul>
+          `
+        }
+      };
+
+      const result = interpretations[data.class];
+      document.getElementById("interpretation").textContent = result.interp;
+      document.getElementById("recommendation").textContent = result.reco;
+      document.getElementById("conditionInsights").innerHTML = result.details;
+
+      document.getElementById("report").style.display = "block";
+    }
+
+    const canvas = document.getElementById("ecgCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    let x = 0;
+    function drawECG() {
+      ctx.fillStyle = "#13131f";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = "#00f0ff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let amplitude = 40;
+      let frequency = 0.04;
+
+      for (let i = 0; i < canvas.width; i++) {
+        let y = canvas.height / 2 + Math.sin((i + x) * frequency) * amplitude;
+        if (i === 0) ctx.moveTo(i, y);
+        else ctx.lineTo(i, y);
+      }
+
+      ctx.stroke();
+      x += 2;
+      requestAnimationFrame(drawECG);
+    }
+
+    drawECG();
+  </script>
+</body>
