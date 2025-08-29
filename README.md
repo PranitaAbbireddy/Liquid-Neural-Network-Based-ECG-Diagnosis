@@ -41,6 +41,7 @@ Used for Normal vs Abnormal visualization & attribution.
 
 ## Model
 Liquid Neural Network (PyTorch)
+
 class LiquidECGClassifier(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(LiquidECGClassifier, self).__init__()
@@ -61,6 +62,7 @@ Loss decreases smoothly over epochs.
 Visualizes classification performance per class.
 
 ### Classification Report
+
               precision    recall  f1-score   support
 Normal            0.98      0.99      0.98     18118
 Supraventricular  0.86      0.62      0.72       556
@@ -94,5 +96,3 @@ pip install pandas numpy matplotlib seaborn scikit-learn
 pip install shap captum
 
 Captum: Model Interpretability for PyTorch
-
-Would you like me to also inc
