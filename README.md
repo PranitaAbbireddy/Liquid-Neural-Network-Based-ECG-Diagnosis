@@ -91,8 +91,8 @@ Multi-class ROC curve with AUC per class.
 
 Install dependencies:
 
-pip install torch torchvision torchaudio
-pip install pandas numpy matplotlib seaborn scikit-learn
-pip install shap captum
+      pip install torch torchvision torchaudio
+      pip install pandas numpy matplotlib seaborn scikit-learn
+      pip install shap captum
 
-Captum: Model Interpretability for PyTorch
+* Captum: Model Interpretability for PyTorch
